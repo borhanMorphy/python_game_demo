@@ -1,73 +1,113 @@
-from math import cos, sin, radians
-from gameAssets import canvasH, canvasW
-
+from gameAssets import direction_vector, canvasW, canvasH, get_weapon_data
+from pygame import transform
 
 # -------------- WEAPON CLASS -------------
-#  WEAPON DATA FORMAT __init__:
+#  WEAPON DATA FORMAT load():
 #                     [
-#       weapon center X, weapon center Y,
-#       bullet image width, bullet image height
-#       bullet real width, bullet real height,
-#       bullet speed
-#                     ]
+#       [weapon shift points],
+#       [bullet properties]  (speed, damage, knock back)
+#                     ],
+#       image
 
 
 class Weapon:
-    def __init__(self, weapon_data):
-        self.speed = 0
-        self.bullet_angle = 0
-        self.bullet_imageW = weapon_data[0]
-        self.bullet_imageH = weapon_data[1]
-        self.bullet_realW = weapon_data[2]
-        self.bullet_realH = weapon_data[3]
-        self.bullet_image = 0
-        self.active = False
-        self.x = 0
-        self.y = 0
-        self.disX = 0
-        self.disY = 0
+    def __init__(self, weapon_name):
+        self.name = weapon_name
 
-    def shoot(self, speed, start_x, start_y, image, angle):
-        self.x = start_x-self.bullet_imageW/2
-        self.y = start_y-self.bullet_imageH/2
-        self.speed = speed
-        self.disX = self.speed*cos(radians(angle))
-        self.disY = -1*self.speed*sin(radians(angle))
-        self.bullet_image = image
+        self.speed = 0
+        self.damage = 0
+        self.knock_back = 0
+        self.angle = 0
+        self.image = 0
+        self.image_rect = 0
+        self.active = False
+        self.points = [0, 0]
+        self.shift_points = [0, 0]
+        self.center_points = [0, 0]
+        self.dx = 0
+        self.dy = 0
+        weapon_data = get_weapon_data(weapon_name)
+        self.load_weapon(weapon_data[0], weapon_data[1])
+
+    def load_weapon(self, weapon_info, bullet_image):
+        self.shift_points[0] = weapon_info[0][0]
+        self.shift_points[1] = weapon_info[0][1]
+        self.speed = weapon_info[1][0]
+        self.damage = weapon_info[1][1]
+        self.knock_back = weapon_info[1][2]
+        self.image = bullet_image
+        self.image_rect = bullet_image.get_rect()
+
+    def shoot(self, points, angle, ship_speed):
+        self.angle = angle
+        temp_dir = self.angle + 90
+        if temp_dir >= 360:
+            temp_dir -= 360
+
+        temp_shifx = (self.shift_points[0]*direction_vector[self.angle][0]) - \
+                     (self.shift_points[1]*direction_vector[self.angle][1])
+        temp_shify = (self.shift_points[1]*direction_vector[self.angle][0]) + \
+                     (self.shift_points[0]*direction_vector[self.angle][1])
+
+        self.center_points[0] = points[0] + temp_shifx
+        self.center_points[1] = points[1] - temp_shify
+        self.points[0] = self.center_points[0]
+        self.points[1] = self.center_points[1]
+
+        self.points[0] -= self.image_rect.center[0]
+        self.points[1] -= self.image_rect.center[1]
+
+        self.dx = (self.speed + ship_speed) * direction_vector[temp_dir][0]
+        self.dy = -self.speed * direction_vector[temp_dir][1]
+
         self.active = True
 
-    def set_default(self):
-        self.x = 0
-        self.y = 0
-        self.speed = 0
-        self.disX = 0
-        self.disY = 0
-        self.bullet_image = 0
+    def set_defaults(self):      # call this whenever collusion occurs
         self.active = False
+        self.angle = 0
+        self.points = [0, 0]
+        self.center_points = [0, 0]
 
     def render(self, canvas):
-        canvas.blit(self.bullet_image, (self.x, self.y))
+        if self.active:
+            self.draw_bullet(canvas)
 
     def tick(self):
-        self.move()
+        if self.active:
+            self.check_collusion()
+            self.move()
 
     def move(self):
-        self.x += self.disX
-        self.y += self.disY
+        self.points[0] += self.dx
+        self.points[1] += self.dy
+        self.center_points[0] += self.dx
+        self.center_points[1] += self.dy
 
     def check_collusion(self):
-        if self.get_rx(-self.bullet_realW/2) <= 0 \
-                or self.get_rx(self.bullet_realW/2) >= canvasW \
-                or self.get_ry(-self.bullet_realH/2) <= 0 \
-                or self.get_ry(self.bullet_realH/2) >= canvasH:
-            print("collusion occurred")
-            return True
-        return False
+        sides = [self.points[0],
+                 self.points[0] + self.image_rect.size[0],
+                 self.points[1],
+                 self.points[1] + self.image_rect.size[1]
+                 ]
 
-    def get_rx(self, shift):
-        return self.x+(self.bullet_imageW/2)+shift
+        if sides[0] <= 0 or sides[1] >= canvasW or sides[2] <= 0 or sides[3] >= canvasH:
+            self.set_defaults()
+            #print("collusion occurred")
 
-    def get_ry(self, shift):
-        return self.y+(self.bullet_imageH/2)+shift
+    def draw_bullet(self, canvas):
+        rotated = transform.rotate(self.image, self.angle)
+        rect = rotated.get_rect()
+        canvas.blit(rotated, (self.center_points[0] - rect.center[0],
+                              self.center_points[1] - rect.center[1]))
+
+        """
+        #   import py.draw to use it
+        draw.rect(canvas, (255, 255, 255), (self.center_points[0] - 
+                                            rect.center[0], self.center_points[1], rect.width, rect.height), 1)
+        draw.line(canvas, (255, 0, 255), (self.center_points[0] - 75, self.center_points[1]), 
+                  (self.center_points[0] + 75, self.center_points[1]), 1)
+        draw.line(canvas, (255, 0, 255), (self.center_points[0], self.center_points[1] - 75), 
+                  (self.center_points[0], self.center_points[1] + 75), 1)
+        """
 
 # ------------------ END ------------------

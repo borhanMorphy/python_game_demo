@@ -74,8 +74,7 @@ def player_handler():
 def new_player(player_ship_name, i):
     p = Player(str(i))                              # create player obj
     ship_data = gA.get_ship_data(player_ship_name)  # get ship data
-    ship = Spaceship(ship_data[0], ship_data[1],    # create ship obj
-                     ship_data[2], ship_data[3])
+    ship = Spaceship(ship_data[0], ship_data[1])    # create ship obj
     p.load_ship(ship)                               # load ship obj to player obj
 
     return p                                        # return player obj

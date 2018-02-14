@@ -1,33 +1,41 @@
 from pygame import image  # just import image to use of image.load
+from math import sin, cos, pi
 
 # ------------- GAME ASSETS ---------------
 # -- basic game variables --
-canvasH = 600       # canvas height
-canvasW = 800       # canvas width
-gameOver = True     # game state
-FPS = 30            # Frame Per Second given
+canvasW = 800           # canvas width
+canvasH = 600           # canvas height
+canvasW_H = canvasW/2   # canvas width / 2
+canvasH_H = canvasH/2   # canvas height / 2
+gameOver = True         # game state
+FPS = 30                # Frame Per Second given
 
-# -- image formats --
-PNG = '.png'
-JPG = '.jpg'
+# -- direction vector --
+D2R = (pi * 2) / 360
+direction_vector = list([[cos(D2R*degrees), sin(D2R*degrees)] for degrees in range(360)])
+direction_vector[0][1] = 0
+direction_vector[90][0] = 0
+direction_vector[180][1] = 0
+direction_vector[270][0] = 0
 
 # ------------------ DATA -----------------
 # ------- Ship 1 -------
 #   -- ship data --
 ship_1_name = "VENOM"   # 'also made up , but it suits so who cares'
-ship_1_info = [canvasW/2, canvasH/2,
-               65, 65,
-               50, 42,
-               10, 0.2, 10]
+ship_1_info = [
+        [canvasW/2, canvasH/2],
+        [10, 0.2, 5, 'REGULAR']
+              ]
 
-ship_1_weapon_info = [0, 0,
-                      15, 15,
-                      15, 15,
-                      20]
+#   -- weapon data --
+weapon_1_info = [
+        [0, 10],
+        [20, 10, 5]
+                ]
 
 #   -- path descriptions --
-SHIP_1_FILE_PATH = r'ship_1\\'
-SHIP_1_SHOOT_FILE_PATH = r'ship_1\shoot\\'
+SHIP_1_FILE_PATH = r'ship6.png'
+WEAPON_1_FILE_PATH = r'bullet1.png'
 
 #   -- sprite sheet frame counts --
 ship_1_frame_count = 36
@@ -63,7 +71,7 @@ class SpriteSheet:
         return self.frames[self.currentframe]
 
     def set_frame_index(self, index):       # set any frame as current_frame
-        if index >= 0 & index < self.frame_count:
+        if index >= 0 and index < self.frame_count:
             self.currentframe = index
 
 # ------------------ END ------------------
@@ -83,17 +91,22 @@ def create_sprite_sheet(path, image_format, count):
     return SpriteSheet(len(frames), frames, 0)
 
 
-# returns as [ [ship_data], [weapon_data], ship_sprite, weapon_sprite ]
+# returns as [ [ship_data], image]
 def get_ship_data(ship_name):
     data = []
     if ship_name is "VENOM":
         data.append(ship_1_info)
-        data.append(ship_1_weapon_info)
-        data.append(create_sprite_sheet(SHIP_1_FILE_PATH,
-                                        PNG, ship_1_frame_count))
+        data.append(image.load(SHIP_1_FILE_PATH))
 
-        data.append(create_sprite_sheet(SHIP_1_SHOOT_FILE_PATH,
-                                        PNG, ship_1_shoot_frame_count))
+    return data
+
+
+# returns as [ [weapon_data], image]
+def get_weapon_data(weapon_name):
+    data = []
+    if weapon_name is 'REGULAR':
+        data.append(weapon_1_info)
+        data.append(image.load(WEAPON_1_FILE_PATH))
 
     return data
 
